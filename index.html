@@ -1255,8 +1255,11 @@
 
         <div class="top-actions" aria-label="Ações principais">
           <button class="btn light" id="saveBtn" type="button">💾 Salvar</button>
+          <button class="btn" id="exportDataBtn" type="button">📤 Exportar dados</button>
+          <button class="btn" id="importDataBtn" type="button">📥 Importar dados</button>
           <button class="btn" id="clearBtn" type="button">🧹 Limpar</button>
           <button class="btn" id="pdfBtn" type="button">📄 Exportar PDF</button>
+          <input id="importDataInput" type="file" accept="application/json,.json" hidden />
         </div>
       </div>
     </header>
@@ -1611,6 +1614,75 @@
       toast.classList.add("show");
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    function safeFilename(value) {
+      const base = String(value || "cadeia_valor")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9_-]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .toLowerCase();
+      return base || "cadeia_valor";
+    }
+
+    function exportData() {
+      try {
+        const payload = {
+          dashboard: "Cadeia de Valor",
+          exportedAt: new Date().toISOString(),
+          version: "1.0",
+          state: ensureState(clone(state))
+        };
+        const org = state?.meta?.orgName || "cadeia_valor";
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `cadeia_valor_${safeFilename(org)}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast("Dados exportados em arquivo JSON.");
+      } catch (error) {
+        console.error("Não foi possível exportar os dados.", error);
+        alert("Não foi possível exportar os dados do dashboard.");
+      }
+    }
+
+    function triggerImportData() {
+      const input = $("#importDataInput");
+      if (input) input.click();
+    }
+
+    function importDataFromFile(event) {
+      const input = event.target;
+      const file = input?.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result || "{}"));
+          const importedState = parsed.state ? parsed.state : parsed;
+          state = ensureState(importedState);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          renderAll();
+          setSaveStatus("Dados importados e salvos");
+          showToast("Dados importados com sucesso.");
+        } catch (error) {
+          console.error("Arquivo de importação inválido.", error);
+          alert("O arquivo selecionado não contém dados válidos do dashboard.");
+        } finally {
+          input.value = "";
+        }
+      };
+      reader.onerror = () => {
+        alert("Não foi possível ler o arquivo selecionado.");
+        input.value = "";
+      };
+      reader.readAsText(file, "utf-8");
     }
 
     function renderAll() {
@@ -2134,6 +2206,9 @@
     document.addEventListener("input", handleInput);
     document.addEventListener("click", handleClick);
     $("#saveBtn").addEventListener("click", saveState);
+    $("#exportDataBtn").addEventListener("click", exportData);
+    $("#importDataBtn").addEventListener("click", triggerImportData);
+    $("#importDataInput").addEventListener("change", importDataFromFile);
     $("#clearBtn").addEventListener("click", clearDashboard);
     $("#pdfBtn").addEventListener("click", exportPDF);
 
