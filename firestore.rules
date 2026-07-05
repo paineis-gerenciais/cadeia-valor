@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// ============================================================
+// Regras de segurança do Firestore — Cadeia de Valor
+// ============================================================
+// Cole este conteúdo em: Firebase Console > Firestore Database
+// > Regras (aba "Rules") > Publicar.
+//
+// Esta versão abaixo é a mais SIMPLES: qualquer pessoa com o link
+// do site consegue ler e gravar. É suficiente para uso interno
+// ou piloto. Veja o README.md para uma versão com senha/App Check.
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /cadeia_valor_current/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /cadeia_valor_history/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Bloqueia qualquer outra coleção não prevista acima
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
