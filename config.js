@@ -12,7 +12,6 @@
 // ============================================================
 
 window.DASHBOARD_CONFIG = {
-  // Cole aqui o objeto "firebaseConfig" que o Firebase te entrega
   FIREBASE_CONFIG: {
     apiKey: "AIzaSyAgm1l4RAr9SvE-AUjG_kKsEKajvm2qTKQ",
     authDomain: "cadeia-valor.firebaseapp.com",
