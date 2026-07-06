@@ -12,15 +12,15 @@
 // ============================================================
 
 window.DASHBOARD_CONFIG = {
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAgm1l4RAr9SvE-AUjG_kKsEKajvm2qTKQ",
-  authDomain: "cadeia-valor.firebaseapp.com",
-  projectId: "cadeia-valor",
-  storageBucket: "cadeia-valor.firebasestorage.app",
-  messagingSenderId: "261554487757",
-  appId: "1:261554487757:web:14db40017cfd5c8f848484"
-};
+  // Cole aqui o objeto "firebaseConfig" que o Firebase te entrega
+  FIREBASE_CONFIG: {
+    apiKey: "AIzaSyAgm1l4RAr9SvE-AUjG_kKsEKajvm2qTKQ",
+    authDomain: "cadeia-valor.firebaseapp.com",
+    projectId: "cadeia-valor",
+    storageBucket: "cadeia-valor.firebasestorage.app",
+    messagingSenderId: "261554487757",
+    appId: "1:261554487757:web:14db40017cfd5c8f848484"
+  },
 
   // Identificador único deste dashboard dentro do Firestore.
   // Se um dia você quiser publicar VÁRIOS dashboards usando o
