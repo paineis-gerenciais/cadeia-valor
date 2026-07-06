@@ -44,8 +44,9 @@
     }
 
     button, input, select, textarea { font: inherit; }
-    button { cursor: pointer; border: 0; }
+    button { cursor: pointer; border: 0; touch-action: manipulation; }
     textarea { resize: none; }
+    a, .tab, .version-option { touch-action: manipulation; }
 
     .app-shell { width: min(1440px, 100%); margin: 0 auto; padding: 18px; }
 
@@ -423,6 +424,18 @@
 
     textarea { min-height: 82px; line-height: 1.45; overflow: hidden; resize: none; }
     input:focus, select:focus, textarea:focus { border-color: rgba(109, 91, 208, .78); box-shadow: 0 0 0 4px rgba(109, 91, 208, .12); }
+
+    /* Campos editáveis do conteúdo: enquanto vazios, o texto de
+       exemplo aparece em vermelho para sinalizar pendência. Assim
+       que o usuário digita, o texto passa a usar a cor normal. */
+    #orgName::placeholder,
+    #valueProposition::placeholder,
+    .product-title-input::placeholder,
+    .macro-item textarea::placeholder,
+    .support-item textarea::placeholder {
+      color: var(--danger);
+      opacity: 1;
+    }
 
     label, .label {
       display: block;
@@ -1130,12 +1143,36 @@
 
     @media (max-width: 760px) {
       .app-shell { padding: 12px; padding-bottom: 88px; }
-      .hero { margin: -12px -12px 12px; padding: 12px; }
-      .hero-card { border-radius: 18px; padding: 15px; }
-      .dashboard-topline { align-items: flex-start; }
-      .dashboard-logo { width: min(320px, 78vw); max-height: 72px; padding: 4px 8px; }
-      .top-actions { justify-content: flex-start; }
-      .btn { padding: 9px 10px; font-size: .78rem; }
+      .hero { position: static; margin: -12px -12px 12px; padding: 12px; padding-top: max(12px, env(safe-area-inset-top)); }
+      .hero-card { border-radius: 18px; padding: 14px; }
+
+      /* Logo e título empilhados (evita espremer o título) */
+      .dashboard-topline { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .dashboard-logo { width: min(220px, 60vw); max-height: 52px; padding: 4px 8px; }
+      .title-block h1 { font-size: 1.2rem; }
+      .dashboard-org-line { font-size: 1.2rem; }
+
+      /* Botões de ação viram uma faixa horizontal rolável, sem quebrar linha */
+      .top-actions {
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+        padding-bottom: 2px;
+        margin: 0 -2px;
+      }
+      .top-actions::-webkit-scrollbar { height: 0; }
+      .top-actions .btn {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+        min-height: 44px;
+        padding: 10px 13px;
+        font-size: .8rem;
+      }
       .side-panel { display: none; }
       .content-panel { padding: 13px; border-radius: 18px; }
       .section-title { display: grid; }
@@ -1178,6 +1215,27 @@
 
       .mobile-bottom-nav button.active { color: var(--primary); background: #f1eaff; }
       .mobile-bottom-nav b { font-size: 1rem; }
+
+      /* Alvos de toque confortáveis (mín. 44px) */
+      .btn { min-height: 44px; }
+      .btn.icon { width: 44px; min-height: 44px; }
+      .tab { min-height: 44px; }
+      input, select, textarea { min-height: 44px; font-size: 16px; }
+      .product-title-input,
+      .macro-item textarea,
+      .support-item textarea { min-height: 44px; font-size: 16px; }
+      .version-search-input { min-height: 44px; font-size: 16px; }
+      .support-preset { min-height: 44px; padding: 10px 14px; }
+      .toast { bottom: calc(70px + env(safe-area-inset-bottom)); }
+
+      /* Modal de versões vira uma "folha" que sobe de baixo */
+      .version-modal-backdrop { align-items: flex-end; padding: 0; }
+      .version-modal {
+        width: 100%;
+        max-height: 88vh;
+        border-radius: 20px 20px 0 0;
+        padding-bottom: env(safe-area-inset-bottom);
+      }
     }
 
     @page { size: A4 landscape; margin: 12mm 10mm 10mm; }
@@ -1866,9 +1924,23 @@
       try {
         const db = initializeFirestore();
         const currentRef = db.collection(getCurrentCollectionName()).doc(getRemoteDashboardKey());
-        const historyRef = db.collection(getHistoryCollectionName()).doc();
+        const historyCollection = db.collection(getHistoryCollectionName());
         const clientTimestamp = new Date().toISOString();
         const orgName = (cleanState?.meta?.orgName || "").trim();
+
+        // Se já existir uma versão salva com o mesmo Nome do Órgão/Entidade,
+        // grava por cima dela. Caso contrário, cria uma versão nova.
+        let historyRef = historyCollection.doc();
+        if (orgName) {
+          const existingSnapshot = await historyCollection
+            .where("dashboardKey", "==", getRemoteDashboardKey())
+            .where("orgName", "==", orgName)
+            .limit(1)
+            .get();
+          if (!existingSnapshot.empty) {
+            historyRef = existingSnapshot.docs[0].ref;
+          }
+        }
 
         const batch = db.batch();
         batch.set(currentRef, {
@@ -2090,7 +2162,11 @@
     }
 
     function markDirty() {
-      setSaveStatus("Alterações não salvas");
+      // Salva automaticamente no navegador a cada edição, para não
+      // perder as informações recentes se a página for atualizada.
+      const cleanState = ensureState(clone(state));
+      persistLocalState(cleanState);
+      setSaveStatus("Rascunho salvo neste navegador");
     }
 
     function setSaveStatus(text) {
